@@ -130,17 +130,18 @@ def fetch_recent_errors():
         model="system__activity",
         view="history",
         fields=[
-            "dashboard.id",
-            "look.id",
+            "history.dashboard_id",
+            "history.look_id",
             "query.id",
+            "history.message",
+            "user.name",
             "history.created_time",
-            "history.user_id",
-            "history.error_message",
         ],
         filters={"history.created_time": "7 days", "history.status": "error"},
         sorts=["history.created_time desc"],
         limit=5000,
     )
+
 
     raw = sdk.run_inline_query("json", wq)
     rows = json.loads(raw)
@@ -153,11 +154,11 @@ def fetch_recent_errors():
         entry = {
             "time": t,
             "query_id": row.get("query.id"),
-            "user_id": row.get("history.user_id"),
-            "message": row.get("history.error_message", "Unknown error"),
+            "user_id": row.get("user.name"),
+            "message": row.get("history.message", "Unknown error"),
         }
-        d = row.get("dashboard.id")
-        l = row.get("look.id")
+        d = row.get("history.dashboard_id")
+        l = row.get("history.look_id")
         if d:
             dash_map[str(d)].append(entry)
         if l:
@@ -211,7 +212,7 @@ def build_report():
         did_s = str(did)
         clusters = collapse_errors(dash_map.get(did_s, []))
         if is_unhealthy(clusters):
-            unhealthy_dashboards[did_s] = {"clusters": clusters[:5]}
+            unhealthy_dashboards[did_s] = {"clusters": clusters[:-5]}
         else:
             # determine if DID had ANY run in last 30 days (fast check)
             if did_s not in ran_dash_set:
@@ -294,7 +295,7 @@ def build_report():
         html_parts.append("<h2><b>Dashboards not run in last 30 days</b></h2>")
         html_parts.append("<ul>")
         for did, lr in never_ran_dashboards:
-            html_parts.append(f"<li><a href='{base_url}/dashboards/{did}'>Dashboard {did}</a> - Last run: {lr}</li>")
+            html_parts.append(f"<li><a href='{base_url}/dashboards/{did}'>Dashboard {did}</a></li>")
         html_parts.append("</ul>")
     else:
         html_parts.append("<h2><b>Dashboards not run in last 30 days</b></h2>")
@@ -338,3 +339,4 @@ if __name__ == "__main__":
     body = build_report()
     print(body)
     send_email(body)
+
